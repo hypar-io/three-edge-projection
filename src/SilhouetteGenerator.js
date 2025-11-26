@@ -66,9 +66,33 @@ function convertPathToLineSegments( path, scale ) {
 
 }
 
+function convertPathToPolygons( path, scale ) {
+
+	if ( ! path ) {
+
+		return [];
+
+	}
+
+	return path.map( points => {
+
+		return points.map( point => {
+
+			return {
+				x: point.x / scale,
+				y: point.y / scale,
+			};
+
+		} );
+
+	} );
+
+}
+
 export const OUTPUT_MESH = 0;
 export const OUTPUT_LINE_SEGMENTS = 1;
 export const OUTPUT_BOTH = 2;
+
 export class SilhouetteGenerator {
 
 	constructor() {
@@ -152,6 +176,13 @@ export class SilhouetteGenerator {
 					];
 
 				}
+
+			}
+
+			,
+			getPolygons() {
+
+				return convertPathToPolygons( overallPath, intScalar );
 
 			}
 
@@ -261,7 +292,40 @@ export class SilhouetteGenerator {
 
 		}
 
-		return handle.getGeometry();
+		const geometryResult = handle.getGeometry();
+		const polygons = handle.getPolygons();
+
+		if ( Array.isArray( geometryResult ) ) {
+
+			geometryResult.forEach( g => {
+
+				if ( g && g.userData ) {
+
+					g.userData.silhouettePaths = polygons;
+
+				} else if ( g ) {
+
+					g.userData = { silhouettePaths: polygons };
+
+				}
+
+			} );
+
+		} else if ( geometryResult ) {
+
+			if ( geometryResult.userData ) {
+
+				geometryResult.userData.silhouettePaths = polygons;
+
+			} else {
+
+				geometryResult.userData = { silhouettePaths: polygons };
+
+			}
+
+		}
+
+		return geometryResult;
 
 	}
 
