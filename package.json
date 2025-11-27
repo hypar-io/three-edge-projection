@@ -2,12 +2,14 @@
   "name": "three-edge-projection",
   "version": "0.0.3",
   "description": "",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "vite --config ./vite.config.js",
     "build-examples": "vite build --config ./vite.config.js",
     "lint": "eslint \"./src/**/*.js\" \"./example/*.js\"",
-    "test": "cd test && jest"
+    "test": "cd test && jest",
+    "test-silhouette": "node test-silhouette.js"
   },
   "files": [
     "src/*"
@@ -44,6 +46,8 @@
   "devDependencies": {
     "@babel/core": "^7.15.5",
     "@babel/preset-env": "^7.15.4",
+    "@gltf-transform/core": "^4.2.1",
+    "@gltf-transform/extensions": "^4.2.1",
     "@types/jest": "^27.0.2",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
@@ -51,6 +55,7 @@
     "eslint-config-mdcs": "^5.0.0",
     "eslint-plugin-jest": "^23.20.0",
     "jest": "^27.2.4",
+    "meshoptimizer": "^0.25.0",
     "three": "^0.178.0",
     "three-mesh-bvh": "^0.9.1",
     "vite": "^6.2.2"

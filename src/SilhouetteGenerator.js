@@ -1,6 +1,7 @@
 import { Path64, Clipper, FillRule } from 'clipper2-js';
 import { ShapeGeometry, Vector3, Shape, Vector2, Triangle, ShapeUtils, BufferGeometry } from 'three';
 import { compressPoints } from './utils/compressPoints.js';
+import { simplifyPolygon } from './utils/simplifyPolygon.js';
 import { triangleIsInsidePaths } from './utils/triangleIsInsidePaths.js';
 import { getSizeSortedTriList } from './utils/getSizeSortedTriList.js';
 import { getTriCount } from './utils/geometryUtils.js';
@@ -102,6 +103,7 @@ export class SilhouetteGenerator {
 		this.doubleSided = false;
 		this.sortTriangles = false;
 		this.output = OUTPUT_MESH;
+		this.simplifyTolerance = null; // RDP simplification tolerance in native units (null = disabled)
 
 	}
 
@@ -179,9 +181,7 @@ export class SilhouetteGenerator {
 
 				}
 
-			}
-
-			,
+			},
 			getPolygons() {
 
 				return convertPathToPolygons( overallPath, intScalar );
@@ -274,6 +274,31 @@ export class SilhouetteGenerator {
 
 				overallPath = Clipper.Union( overallPath, path, FillRule.NonZero );
 				compressionCounter ++;
+
+				// apply RDP simplification if enabled (reduces point count for faster subsequent unions)
+				if ( this.simplifyTolerance !== null && this.simplifyTolerance > 0 ) {
+
+					const toleranceInIntSpace = this.simplifyTolerance * intScalar;
+					const simplifiedPaths = new Path64();
+					for ( let i = 0; i < overallPath.length; i ++ ) {
+
+						const originalPath = overallPath[ i ];
+						if ( originalPath.length > 2 ) {
+
+							const simplified = simplifyPolygon( originalPath, toleranceInIntSpace );
+							simplifiedPaths.push( Clipper.makePath( simplified.flatMap( p => [ p.x, p.y ] ) ) );
+
+						} else {
+
+							simplifiedPaths.push( originalPath );
+
+						}
+
+					}
+
+					overallPath = simplifiedPaths;
+
+				}
 
 				// only compress periodically to avoid expensive operations on every iteration
 				if ( compressionCounter >= COMPRESSION_INTERVAL ) {
