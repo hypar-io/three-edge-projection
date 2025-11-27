@@ -151,6 +151,8 @@ export class SilhouetteGenerator {
 		const posAttr = geometry.attributes.position;
 		const triCount = getTriCount( geometry );
 		let overallPath = null;
+		let compressionCounter = 0;
+		const COMPRESSION_INTERVAL = 20; // compress every N triangles instead of every triangle
 
 		const triList = sortTriangles ?
 			getSizeSortedTriList( geometry ) :
@@ -271,7 +273,15 @@ export class SilhouetteGenerator {
 			} else {
 
 				overallPath = Clipper.Union( overallPath, path, FillRule.NonZero );
-				overallPath.forEach( path => compressPoints( path ) );
+				compressionCounter ++;
+
+				// only compress periodically to avoid expensive operations on every iteration
+				if ( compressionCounter >= COMPRESSION_INTERVAL ) {
+
+					overallPath.forEach( path => compressPoints( path ) );
+					compressionCounter = 0;
+
+				}
 
 			}
 
@@ -289,6 +299,13 @@ export class SilhouetteGenerator {
 				time = performance.now();
 
 			}
+
+		}
+
+		// final compression pass to clean up any remaining points
+		if ( overallPath ) {
+
+			overallPath.forEach( path => compressPoints( path ) );
 
 		}
 

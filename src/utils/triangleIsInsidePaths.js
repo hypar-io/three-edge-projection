@@ -21,7 +21,67 @@ function vectorEpsEquals( v0, v1 ) {
 
 }
 
+function getTriangleBounds( tri ) {
+
+	const minX = Math.min( tri.a.x, tri.b.x, tri.c.x );
+	const maxX = Math.max( tri.a.x, tri.b.x, tri.c.x );
+	const minZ = Math.min( tri.a.z, tri.b.z, tri.c.z );
+	const maxZ = Math.max( tri.a.z, tri.b.z, tri.c.z );
+	return { minX, maxX, minZ, maxZ };
+
+}
+
+function getPathsBounds( paths ) {
+
+	if ( paths.length === 0 ) {
+
+		return null;
+
+	}
+
+	let minX = Infinity;
+	let maxX = - Infinity;
+	let minZ = Infinity;
+	let maxZ = - Infinity;
+
+	for ( let p = 0, pl = paths.length; p < pl; p ++ ) {
+
+		const points = paths[ p ];
+		for ( let i = 0, l = points.length; i < l; i ++ ) {
+
+			const point = points[ i ];
+			minX = Math.min( minX, point.x );
+			maxX = Math.max( maxX, point.x );
+			minZ = Math.min( minZ, point.y );
+			maxZ = Math.max( maxZ, point.y );
+
+		}
+
+	}
+
+	return { minX, maxX, minZ, maxZ };
+
+}
+
 export function triangleIsInsidePaths( tri, paths ) {
+
+	// quick bounding box rejection - if triangle is completely outside paths bounds, skip expensive checks
+	const triBounds = getTriangleBounds( tri );
+	const pathsBounds = getPathsBounds( paths );
+
+	if ( pathsBounds ) {
+
+		// check if triangle is completely outside the bounding box of all paths
+		if ( triBounds.maxX < pathsBounds.minX ||
+			 triBounds.minX > pathsBounds.maxX ||
+			 triBounds.maxZ < pathsBounds.minZ ||
+			 triBounds.minZ > pathsBounds.maxZ ) {
+
+			return false;
+
+		}
+
+	}
 
 	const indices = [ 'a', 'b', 'c' ];
 	const edges = [ new Line3(), new Line3(), new Line3() ];
