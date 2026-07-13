@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>three-edge-projection - Projected Edge Generation</title>
+    <title>three-edge-projection - Perspective Camera Projection</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
     <style type="text/css">
@@ -38,9 +38,11 @@
 </head>
 <body>
 	<div id="info">
-		Accelerated geometry edge projection and clipping onto<br/>the XZ plane for orthographic vector views.
+		Perspective camera edge projection - position the camera then click Generate.
+		<br/>
+		Note that compute shader-based generation can result in artifacts due to floating point precision.
 	</div>
 	<div id="output"></div>
-    <script type="module" src="./edgeProjection.js"></script>
+    <script type="module" src="./perspectiveProjection.js"></script>
 </body>
 </html>

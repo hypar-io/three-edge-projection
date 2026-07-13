@@ -5,50 +5,50 @@
 
 function pointToLineDistance( point, lineStart, lineEnd ) {
 
-	const x = point.x
-	const y = point.y
-	const x1 = lineStart.x
-	const y1 = lineStart.y
-	const x2 = lineEnd.x
-	const y2 = lineEnd.y
+	const x = point.x;
+	const y = point.y;
+	const x1 = lineStart.x;
+	const y1 = lineStart.y;
+	const x2 = lineEnd.x;
+	const y2 = lineEnd.y;
 
-	const A = x - x1
-	const B = y - y1
-	const C = x2 - x1
-	const D = y2 - y1
+	const A = x - x1;
+	const B = y - y1;
+	const C = x2 - x1;
+	const D = y2 - y1;
 
-	const dot = A * C + B * D
-	const lenSq = C * C + D * D
-	let param = - 1
+	const dot = A * C + B * D;
+	const lenSq = C * C + D * D;
+	let param = - 1;
 
 	if ( lenSq !== 0 ) {
 
-		param = dot / lenSq
+		param = dot / lenSq;
 
 	}
 
-	let xx, yy
+	let xx, yy;
 
 	if ( param < 0 ) {
 
-		xx = x1
-		yy = y1
+		xx = x1;
+		yy = y1;
 
 	} else if ( param > 1 ) {
 
-		xx = x2
-		yy = y2
+		xx = x2;
+		yy = y2;
 
 	} else {
 
-		xx = x1 + param * C
-		yy = y1 + param * D
+		xx = x1 + param * C;
+		yy = y1 + param * D;
 
 	}
 
-	const dx = x - xx
-	const dy = y - yy
-	return Math.sqrt( dx * dx + dy * dy )
+	const dx = x - xx;
+	const dy = y - yy;
+	return Math.sqrt( dx * dx + dy * dy );
 
 }
 
@@ -62,33 +62,33 @@ export function simplifyPolygon( points, tolerance ) {
 
 	if ( points.length <= 2 ) {
 
-		return points
+		return points;
 
 	}
 
-	const simplified = []
+	const simplified = [];
 
 	const rdp = ( start, end ) => {
 
 		if ( end - start <= 1 ) {
 
-			return
+			return;
 
 		}
 
-		const startPoint = points[ start ]
-		const endPoint = points[ end ]
+		const startPoint = points[ start ];
+		const endPoint = points[ end ];
 
-		let maxDistance = 0
-		let maxIndex = start
+		let maxDistance = 0;
+		let maxIndex = start;
 
 		for ( let i = start + 1; i < end; i ++ ) {
 
-			const distance = pointToLineDistance( points[ i ], startPoint, endPoint )
+			const distance = pointToLineDistance( points[ i ], startPoint, endPoint );
 			if ( distance > maxDistance ) {
 
-				maxDistance = distance
-				maxIndex = i
+				maxDistance = distance;
+				maxIndex = i;
 
 			}
 
@@ -96,23 +96,23 @@ export function simplifyPolygon( points, tolerance ) {
 
 		if ( maxDistance > tolerance ) {
 
-			rdp( start, maxIndex )
-			simplified.push( maxIndex )
-			rdp( maxIndex, end )
+			rdp( start, maxIndex );
+			simplified.push( maxIndex );
+			rdp( maxIndex, end );
 
 		}
 
-	}
+	};
 
-	simplified.push( 0 )
-	rdp( 0, points.length - 1 )
-	simplified.push( points.length - 1 )
+	simplified.push( 0 );
+	rdp( 0, points.length - 1 );
+	simplified.push( points.length - 1 );
 
 	// Sort indices and remove duplicates
-	const uniqueIndices = [ ...new Set( simplified ) ].sort( ( a, b ) => a - b )
+	const uniqueIndices = [ ...new Set( simplified ) ].sort( ( a, b ) => a - b );
 
 	// Return simplified points
-	return uniqueIndices.map( ( idx ) => points[ idx ] )
+	return uniqueIndices.map( ( idx ) => points[ idx ] );
 
 }
 
@@ -121,7 +121,7 @@ export function simplifyPolygon( points, tolerance ) {
  */
 export function simplifyPolygonLoops( loops, tolerance ) {
 
-	return loops.map( ( loop ) => simplifyPolygon( loop, tolerance ) )
+	return loops.map( ( loop ) => simplifyPolygon( loop, tolerance ) );
 
 }
 

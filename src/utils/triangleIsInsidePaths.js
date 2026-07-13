@@ -1,4 +1,4 @@
-import { Line3, Ray } from 'three';
+import { Line3 } from 'three';
 
 function xzToXzCopy( v, target ) {
 

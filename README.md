@@ -12,13 +12,29 @@ Edge projection based on [three-mesh-bvh](https://github.com/gkjohnson/three-mes
 
 # Examples
 
-[Geometry edge projection](https://gkjohnson.github.io/three-edge-projection/example/bundle/edgeProjection.html)
+[Rover edge projection](https://gkjohnson.github.io/three-edge-projection/edgeProjection.html)
 
-[Silhouette projection](https://gkjohnson.github.io/three-edge-projection/example/bundle/silhouetteProjection.html)
+[Lego edge projection](https://gkjohnson.github.io/three-edge-projection/edgeProjection.html#lego)
 
-[Floor plan projection](https://gkjohnson.github.io/three-edge-projection/example/bundle/floorProjection.html)
+[Silhouette projection](https://gkjohnson.github.io/three-edge-projection/silhouetteProjection.html)
 
-[Planar intersection](https://gkjohnson.github.io/three-edge-projection/example/bundle/planarIntersection.html)
+[Floor plan projection](https://gkjohnson.github.io/three-edge-projection/floorProjection.html)
+
+[Planar intersection](https://gkjohnson.github.io/three-edge-projection/planarIntersection.html)
+
+### WebGPU
+
+[Rover edge projection](https://gkjohnson.github.io/three-edge-projection/edgeProjectionWebGPU.html)
+
+# Installation
+
+```
+npm install github:@gkjohnson/three-edge-projection
+```
+
+# API
+
+See [API.md](./API.md) for full API documentation.
 
 # Use
 
@@ -28,7 +44,7 @@ More granular API with control over when edge trimming work happens.
 
 ```js
 const generator = new ProjectionGenerator();
-generator.generate( geometry );
+generator.generate( scene );
 
 let result = task.next();
 while ( ! result.done ) {
@@ -37,7 +53,7 @@ while ( ! result.done ) {
 
 }
 
-const lines = new LineSegments( result.value, material );
+const lines = new LineSegments( result.value.getVisibleLineGeometry(), material );
 scene.add( lines );
 ```
 
@@ -47,152 +63,18 @@ Simpler API with less control over when the work happens.
 
 ```js
 const generator = new ProjectionGenerator();
-const geometry = await generator.generateAsync( geometry );
-const mesh = new Mesh( result.value, material );
+const result = await generator.generateAsync( scene );
+const mesh = new Mesh( result.getVisibleLineGeometry(), material );
 scene.add( mesh );
 ```
 
+**Visibility Culling**
 
-# API
-
-## ProjectionGenerator
-
-### .sortEdges
+To visibility cull a scene before generation you can use MeshVisibilityCuller before running the projection step.
 
 ```js
-sortEdges = true : Boolean
+const input = new MeshVisibilityCuller( renderer ).cull( scene );
+const result = await generator.generateAsync( scene );
+const mesh = new Mesh( result.getVisibleLineGeometry(), material );
+scene.add( mesh );
 ```
-
-Whether to sort edges along the Y axis before iterating over the edges.
-
-### .iterationTime
-
-```js
-iterationTime = 30 : Number
-```
-
-How long to spend trimming edges before yielding.
-
-### .angleThreshold
-
-```js
-angleThreshold = 50 : Number
-```
-
-The threshold angle in degrees at which edges are generated.
-
-### .includeIntersectionEdges
-
-```js
-includeIntersectionEdges = true : Boolean
-```
-
-Whether to generate edges representing the intersections between triangles.
-
-### .generate
-
-```js
-*generate(
-	geometry : MeshBVH | BufferGeometry,
-	options : {
-		onProgress: ( percent : Number ) => void,
-	}
-) : BufferGeometry
-```
-
-Generate the edge geometry using a generator function.
-
-### .generateAsync
-
-```js
-generateAsync(
-	geometry : MeshBVH | BufferGeometry,
-	options : {
-		onProgress: ( percent : Number ) => void,
-		signal: AbortSignal,
-	}
-) : Promise<BufferGeometry>
-```
-
-Generate the geometry with a promise-style API.
-
-## SilhouetteGenerator
-
-Used for generating a projected silhouette of a geometry using the [clipper2-js](https://www.npmjs.com/package/clipper2-js) project. Performing these operations can be extremely slow with more complex geometry and not always yield a stable result.
-
-### .iterationTime
-
-```js
-iterationTime = 10 : Number
-```
-
-How long to spend trimming edges before yielding.
-
-### .doubleSided
-
-```js
-doubleSided = false : Boolean
-```
-
-If `false` then only the triangles facing upwards are included in the silhouette.
-
-### .sortTriangles
-
-```js
-sortTriangles = false : Boolean
-```
-
-Whether to sort triangles and project them large-to-small. In some cases this can cause the performance to drop since the union operation is best performed with smooth, simple edge shapes.
-
-### .output
-
-```js
-output = OUTPUT_MESH | OUTPUT_LINE_SEGMENTS | OUTPUT_BOTH
-```
-
-Whether to output mesh geometry, line segments geometry, or both in an array ( `[ mesh, line segments ]` );
-
-### .generate
-
-```js
-*generate(
-	geometry : BufferGeometry,
-	options : {
-		onProgress: ( percent : Number ) => void,
-	}
-) : BufferGeometry
-```
-
-Generate the geometry using a generator function.
-
-### .generateAsync
-
-```js
-generateAsync(
-	geometry : BufferGeometry,
-	options : {
-		onProgress: ( percent : Number ) => void,
-		signal: AbortSignal,
-	}
-) : Promise<BufferGeometry>
-```
-
-Generate the silhouette geometry with a promise-style API.
-
-## PlanarIntersectionGenerator
-
-### .plane
-
-```js
-plane : Plane
-```
-
-Plane that defaults to y up plane at the origin.
-
-### .generate
-
-```js
-generate( geometry : MeshBVH | BufferGeometry ) : BufferGeometry
-```
-
-Generates a geometry of the resulting line segments from the planar intersection.

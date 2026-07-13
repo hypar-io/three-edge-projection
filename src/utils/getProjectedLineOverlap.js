@@ -11,6 +11,7 @@ const _tri = /* @__PURE__ */ new ExtendedTriangle();
 const _line = /* @__PURE__ */ new Line3();
 const _triLine = /* @__PURE__ */ new Line3();
 const _dir = /* @__PURE__ */ new Vector3();
+const _ortho = /* @__PURE__ */ new Vector3();
 const _triDir = /* @__PURE__ */ new Vector3();
 
 // Returns the portion of the line that is overlapping the triangle when projected
@@ -35,9 +36,10 @@ export function getProjectedLineOverlap( line, triangle, lineTarget = new Line3(
 
 	}
 
-	_line.delta( _dir ).normalize();
-	_dir.cross( _tri.plane.normal ).normalize();
-	_orthoPlane.setFromNormalAndCoplanarPoint( _dir, _line.start );
+	const lineDistance = _line.distance();
+	_line.delta( _dir ).divideScalar( lineDistance );
+	_ortho.copy( _dir ).cross( _tri.plane.normal ).normalize();
+	_orthoPlane.setFromNormalAndCoplanarPoint( _ortho, _line.start );
 
 	// find the line of intersection of the triangle along the plane if it exists
 	let intersectCount = 0;
@@ -47,35 +49,50 @@ export function getProjectedLineOverlap( line, triangle, lineTarget = new Line3(
 		const p1 = points[ i ];
 		const p2 = points[ ( i + 1 ) % 3 ];
 
-		_edgeLine.start.copy( p1 );
-		_edgeLine.end.copy( p2 );
-		const startIntersects = Math.abs( _orthoPlane.distanceToPoint( _edgeLine.start ) ) < DIST_EPSILON;
-		const endIntersects = Math.abs( _orthoPlane.distanceToPoint( _edgeLine.end ) ) < DIST_EPSILON;
-		const edgeIntersects = _orthoPlane.intersectLine( _edgeLine, _point );
-		if ( edgeIntersects && ! endIntersects || startIntersects ) {
+		const distToStart = _orthoPlane.distanceToPoint( p1 );
+		const distToEnd = _orthoPlane.distanceToPoint( p2 );
 
-			if ( startIntersects && ! edgeIntersects ) {
+		const startIntersects = Math.abs( distToStart ) < DIST_EPSILON;
+		const endIntersects = Math.abs( distToEnd ) < DIST_EPSILON;
 
-				_point.copy( _edgeLine.start );
+		if ( startIntersects && endIntersects ) {
 
-			}
+			continue;
 
-			if ( intersectCount === 0 ) {
+		} else if ( startIntersects ) {
 
-				_triLine.start.copy( _point );
+			_point.copy( p1 );
 
-			} else {
+		} else if ( endIntersects ) {
 
-				_triLine.end.copy( _point );
+			continue;
 
-			}
+		} else if ( ( distToStart < 0.0 ) == ( distToEnd < 0.0 ) ) {
 
-			intersectCount ++;
-			if ( intersectCount === 2 ) {
+			continue;
 
-				break;
+		} else {
 
-			}
+			// manual edge-plane intersection (faster than Plane.intersectLine)
+			const t = distToStart / ( distToStart - distToEnd );
+			_point.lerpVectors( p1, p2, t );
+
+		}
+
+		if ( intersectCount == 0 ) {
+
+			_triLine.start.copy( _point );
+
+		} else if ( intersectCount == 1 ) {
+
+			_triLine.end.copy( _point );
+
+		}
+
+		intersectCount ++;
+		if ( intersectCount === 2 ) {
+
+			break;
 
 		}
 
@@ -84,13 +101,12 @@ export function getProjectedLineOverlap( line, triangle, lineTarget = new Line3(
 	if ( intersectCount === 2 ) {
 
 		// find the intersect line if any
-		_line.delta( _dir ).normalize();
 		_triLine.delta( _triDir ).normalize();
 
 		// swap edges so they're facing in the same direction
 		if ( _dir.dot( _triDir ) < 0 ) {
 
-			let tmp = _triLine.start;
+			const tmp = _triLine.start;
 			_triLine.start = _triLine.end;
 			_triLine.end = tmp;
 
@@ -111,12 +127,12 @@ export function getProjectedLineOverlap( line, triangle, lineTarget = new Line3(
 		}
 
 		line.at(
-			Math.max( s1, s2 ) / _line.distance(),
+			Math.max( s1, s2 ) / lineDistance,
 			lineTarget.start,
 		);
 
 		line.at(
-			Math.min( e1, e2 ) / _line.distance(),
+			Math.min( e1, e2 ) / lineDistance,
 			lineTarget.end,
 		);
 

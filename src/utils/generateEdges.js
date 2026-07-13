@@ -1,16 +1,44 @@
-import { Vector3, Triangle, Line3, MathUtils } from 'three';
+import { Vector3, Triangle, MathUtils, Matrix4 } from 'three';
+import { ProjectionEdge } from './ProjectionEdge.js';
 
 // Modified version of js EdgesGeometry logic to handle silhouette edges
-const EPSILON = 1e-16;
+const EPSILON = 1e-10;
 const UP_VECTOR = /* @__PURE__ */ new Vector3( 0, 1, 0 );
 const _v0 = /* @__PURE__ */ new Vector3();
 const _v1 = /* @__PURE__ */ new Vector3();
 const _normal = /* @__PURE__ */ new Vector3();
 const _triangle = /* @__PURE__ */ new Triangle();
+const _triangleLocal = /* @__PURE__ */ new Triangle();
+const _localProjection = /* @__PURE__ */ new Vector3();
+const _invMat = /* @__PURE__ */ new Matrix4();
 
-export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAngle = 1 ) {
+export function* generateEdges( geometry, target = [], options = {} ) {
 
-	const edges = [];
+	const {
+		matrix = null,
+		thresholdAngle = 1,
+		iterationTime = 30,
+	} = options;
+
+	_localProjection.copy( UP_VECTOR );
+
+	let isAffine = true;
+	if ( matrix ) {
+
+		isAffine =
+			matrix.elements[ 3 ] === 0 &&
+			matrix.elements[ 7 ] === 0 &&
+			matrix.elements[ 11 ] === 0 &&
+			matrix.elements[ 15 ] === 1;
+
+		if ( isAffine ) {
+
+			_invMat.copy( matrix ).invert();
+			_localProjection.transformDirection( _invMat );
+
+		}
+
+	}
 
 	const precisionPoints = 4;
 	const precision = Math.pow( 10, precisionPoints );
@@ -25,7 +53,15 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 	const hashes = new Array( 3 );
 
 	const edgeData = {};
+	let time = performance.now();
 	for ( let i = 0; i < indexCount; i += 3 ) {
+
+		if ( performance.now() - time > iterationTime ) {
+
+			yield;
+			time = performance.now();
+
+		}
 
 		if ( indexAttr ) {
 
@@ -41,11 +77,10 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 
 		}
 
-		const { a, b, c } = _triangle;
-		a.fromBufferAttribute( positionAttr, indexArr[ 0 ] );
-		b.fromBufferAttribute( positionAttr, indexArr[ 1 ] );
-		c.fromBufferAttribute( positionAttr, indexArr[ 2 ] );
-		_triangle.getNormal( _normal );
+		const { a, b, c } = _triangleLocal;
+		_triangleLocal.a.fromBufferAttribute( positionAttr, indexArr[ 0 ] );
+		_triangleLocal.b.fromBufferAttribute( positionAttr, indexArr[ 1 ] );
+		_triangleLocal.c.fromBufferAttribute( positionAttr, indexArr[ 2 ] );
 
 		// create hashes for the edge from the vertices
 		hashes[ 0 ] = `${ Math.round( a.x * precision ) },${ Math.round( a.y * precision ) },${ Math.round( a.z * precision ) }`;
@@ -59,6 +94,22 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 
 		}
 
+		// compute normal — fast path uses local-space normal with pre-transformed
+		// projection direction; slow path transforms vertices for world-space normal
+		if ( matrix && ! isAffine ) {
+
+			_triangle.copy( _triangleLocal );
+			_triangle.a.applyMatrix4( matrix );
+			_triangle.b.applyMatrix4( matrix );
+			_triangle.c.applyMatrix4( matrix );
+			_triangle.getNormal( _normal );
+
+		} else {
+
+			_triangleLocal.getNormal( _normal );
+
+		}
+
 		// iterate over every edge
 		for ( let j = 0; j < 3; j ++ ) {
 
@@ -66,8 +117,8 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 			const jNext = ( j + 1 ) % 3;
 			const vecHash0 = hashes[ j ];
 			const vecHash1 = hashes[ jNext ];
-			const v0 = _triangle[ vertKeys[ j ] ];
-			const v1 = _triangle[ vertKeys[ jNext ] ];
+			const v0 = _triangleLocal[ vertKeys[ j ] ];
+			const v1 = _triangleLocal[ vertKeys[ jNext ] ];
 
 			const hash = `${ vecHash0 }_${ vecHash1 }`;
 			const reverseHash = `${ vecHash1 }_${ vecHash0 }`;
@@ -81,19 +132,21 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 
 				// get the dot product relative to the projection angle and
 				// add an epsilon for nearly vertical triangles
-				let normDot = projectionDir.dot( _normal );
+				const _projDir = _localProjection;
+				let normDot = _projDir.dot( _normal );
 				normDot = Math.abs( normDot ) < EPSILON ? 0 : normDot;
 
-				let otherDot = projectionDir.dot( otherNormal );
+				let otherDot = _projDir.dot( otherNormal );
 				otherDot = Math.abs( otherDot ) < EPSILON ? 0 : otherDot;
 
 				const projectionThreshold = Math.sign( normDot ) !== Math.sign( otherDot );
+
 				if ( meetsThreshold || projectionThreshold ) {
 
-					const line = new Line3();
+					const line = new ProjectionEdge();
 					line.start.copy( v0 );
 					line.end.copy( v1 );
-					edges.push( line );
+					target.push( line );
 
 				}
 
@@ -125,15 +178,15 @@ export function generateEdges( geometry, projectionDir = UP_VECTOR, thresholdAng
 			_v0.fromBufferAttribute( positionAttr, index0 );
 			_v1.fromBufferAttribute( positionAttr, index1 );
 
-			const line = new Line3();
+			const line = new ProjectionEdge();
 			line.start.copy( _v0 );
 			line.end.copy( _v1 );
-			edges.push( line );
+			target.push( line );
 
 		}
 
 	}
 
-	return edges;
+	return target;
 
 }

@@ -5,20 +5,33 @@ const _line = new Line3();
 const _target = new Line3();
 const _vec = new Vector3();
 const EPS = 1e-16;
+
+/**
+ * Utility for generating the line segments produced by a planar intersection with geometry.
+ */
 export class PlanarIntersectionGenerator {
 
 	constructor() {
 
+		/**
+		 * Plane that defaults to y up plane at the origin.
+		 * @type {Plane}
+		 */
 		this.plane = new Plane( new Vector3( 0, 1, 0 ), 0 );
 
 	}
 
+	/**
+	 * Generates a geometry of the resulting line segments from the planar intersection.
+	 * @param {MeshBVH|BufferGeometry} geometry
+	 * @returns {BufferGeometry}
+	 */
 	generate( bvh ) {
 
 		const { plane } = this;
 		if ( bvh instanceof BufferGeometry ) {
 
-			bvh = new MeshBVH( bvh, { maxLeafTris: 1 } );
+			bvh = new MeshBVH( bvh, { maxLeafSize: 1 } );
 
 		}
 
